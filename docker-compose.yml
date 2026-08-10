@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+
+    container_name: auth_postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: akerman
+      POSTGRES_PASSWORD: akerman
+
+    ports:
+      - "5430:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
