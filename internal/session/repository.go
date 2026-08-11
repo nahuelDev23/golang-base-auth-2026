@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -162,4 +163,24 @@ func (r *Repository) FindByRefreshTokenHash(
 	}
 
 	return session, nil
+}
+
+func (r *Repository) DeleteOldSessions(
+	ctx context.Context,
+	cutoff time.Time,
+) error {
+
+	_, err := r.db.Exec(
+		ctx,
+		`
+		DELETE FROM sessions
+		WHERE
+			(revoked = true AND created_at < $1)
+			OR
+			(expires_at < $1)
+		`,
+		cutoff,
+	)
+
+	return err
 }

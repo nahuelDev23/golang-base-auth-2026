@@ -7,12 +7,13 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"test.nahueldev23.com/internal/user"
 )
 
 type Claims struct {
 	UserID    uuid.UUID `json:"uid"`
 	SessionID uuid.UUID `json:"sid"`
-
+	Role      user.Role `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -30,16 +31,17 @@ func (s *Service) GenerateRefreshToken() (string, error) {
 func (s *Service) GenerateAccessToken(
 	userID uuid.UUID,
 	sessionID uuid.UUID,
+	role user.Role,
 ) (string, error) {
 
 	claims := Claims{
 		UserID:    userID,
 		SessionID: sessionID,
-
+		Role:      role,
 		RegisteredClaims: jwt.RegisteredClaims{
 
 			ExpiresAt: jwt.NewNumericDate(
-				time.Now().Add(24 * time.Hour),
+				time.Now().Add(15 * time.Minute),
 			),
 
 			IssuedAt: jwt.NewNumericDate(
@@ -66,6 +68,10 @@ func (s *Service) ParseToken(
 		tokenString,
 		&Claims{},
 		func(token *jwt.Token) (any, error) {
+			if token.Method != jwt.SigningMethodHS256 {
+				return nil, jwt.ErrTokenSignatureInvalid
+			}
+
 			return s.jwtSecret, nil
 		},
 	)

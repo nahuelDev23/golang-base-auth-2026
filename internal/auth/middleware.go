@@ -59,6 +59,7 @@ func (s *Service) AuthMiddleware() gin.HandlerFunc {
 
 		c.Set(ContextUserID, claims.UserID)
 		c.Set(ContextSessionID, claims.SessionID)
+		c.Set(ContextUserRole, claims.Role)
 
 		c.Next()
 	}

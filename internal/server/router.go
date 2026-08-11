@@ -23,6 +23,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 		userRepository,
 		sessionRepository,
 		cfg.JWTSecret, // esto lo ajustaremos en un momento
+		cfg.SessionDurationHours,
 	)
 
 	authHandler := auth.NewHandler(authService)
@@ -80,6 +81,17 @@ func New(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 		"/logout-all",
 		authService.AuthMiddleware(),
 		authHandler.LogoutAll,
+	)
+
+	router.GET(
+		"/admin/test",
+		authService.AuthMiddleware(),
+		auth.RequireRole(user.RoleAdmin),
+		func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"message": "welcome admin",
+			})
+		},
 	)
 
 	router.POST("/refresh", authHandler.Refresh)

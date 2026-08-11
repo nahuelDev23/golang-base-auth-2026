@@ -11,21 +11,23 @@ import (
 )
 
 type Service struct {
-	users    *user.Repository
-	sessions *session.Repository
-
-	jwtSecret []byte
+	users                *user.Repository
+	sessions             *session.Repository
+	jwtSecret            []byte
+	sessionDurationHours int
 }
 
 func NewService(
 	users *user.Repository,
 	sessions *session.Repository,
 	jwtSecret string,
+	sessionDurationHours int,
 ) *Service {
 	return &Service{
-		users:     users,
-		sessions:  sessions,
-		jwtSecret: []byte(jwtSecret),
+		users:                users,
+		sessions:             sessions,
+		jwtSecret:            []byte(jwtSecret),
+		sessionDurationHours: sessionDurationHours,
 	}
 }
 
@@ -58,6 +60,7 @@ func (s *Service) Login(
 	token, err := s.GenerateAccessToken(
 		user.ID,
 		sessionID,
+		user.Role,
 	)
 
 	if err != nil {
@@ -73,8 +76,10 @@ func (s *Service) Login(
 		ID:               sessionID,
 		UserId:           user.ID,
 		RefreshTokenHash: HashToken(refreshToken),
-		ExpiresAt:        time.Now().Add(24 * time.Hour),
-		Revoked:          false,
+		ExpiresAt: time.Now().Add(
+			time.Duration(s.sessionDurationHours) * time.Hour,
+		),
+		Revoked: false,
 	}
 
 	err = s.sessions.Create(
@@ -114,6 +119,10 @@ func (s *Service) ValidateToken(
 	}
 
 	if session.Revoked {
+		return nil, ErrInvalidSession
+	}
+
+	if time.Now().After(session.ExpiresAt) {
 		return nil, ErrInvalidSession
 	}
 
@@ -163,9 +172,23 @@ func (s *Service) Refresh(
 		return "", ErrInvalidSession
 	}
 
+	u, err := s.users.FindByID(
+		ctx,
+		session.UserId,
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	if u == nil {
+		return "", ErrInvalidSession
+	}
+
 	accessToken, err := s.GenerateAccessToken(
 		session.UserId,
 		session.ID,
+		u.Role,
 	)
 
 	if err != nil {

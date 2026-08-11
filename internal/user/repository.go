@@ -29,6 +29,7 @@ func (r *Repository) FindByUsername(ctx context.Context, username string) (*User
 			id,
 			username,
 			password_hash,
+			role,
 			created_at
 		FROM users
 		WHERE username = $1
@@ -38,6 +39,7 @@ func (r *Repository) FindByUsername(ctx context.Context, username string) (*User
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
+		&user.Role,
 		&user.CreatedAt,
 	)
 
@@ -62,12 +64,14 @@ func (r *Repository) Create(
 			id,
 			username,
 			password_hash
+			role
 		)
 		VALUES ($1, $2, $3)
 		`,
 		user.ID,
 		user.Username,
 		user.PasswordHash,
+		user.Role,
 	)
 
 	return err
@@ -86,6 +90,7 @@ func (r *Repository) FindByID(
 		id,
 		username,
 		password_hash,
+		role,
 		created_at
 		FROM users
 		WHERE id = $1
@@ -95,6 +100,7 @@ func (r *Repository) FindByID(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
+		&user.Role,
 		&user.CreatedAt,
 	)
 
