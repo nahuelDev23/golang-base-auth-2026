@@ -8,7 +8,7 @@ import (
 	"test.nahueldev23.com/internal/user"
 )
 
-func RequireRole(role user.Role) gin.HandlerFunc {
+func RequireRole(allowedRoles ...user.Role) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
@@ -32,14 +32,16 @@ func RequireRole(role user.Role) gin.HandlerFunc {
 			return
 		}
 
-		if userRole != role {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "forbidden",
-			})
-			c.Abort()
-			return
+		for _, allowedRole := range allowedRoles {
+			if userRole == allowedRole {
+				c.Next()
+				return
+			}
 		}
 
-		c.Next()
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "forbidden",
+		})
+		c.Abort()
 	}
 }
