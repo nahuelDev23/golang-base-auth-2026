@@ -33,15 +33,15 @@ func (s *Service) Login(
 	ctx context.Context,
 	username string,
 	password string,
-) (string, error) {
+) (string, string, error) {
 
 	user, err := s.users.FindByUsername(ctx, username)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if user == nil {
-		return "", ErrInvalidCredentials
+		return "", "", ErrInvalidCredentials
 	}
 
 	err = bcrypt.CompareHashAndPassword(
@@ -50,7 +50,7 @@ func (s *Service) Login(
 	)
 
 	if err != nil {
-		return "", ErrInvalidCredentials
+		return "", "", ErrInvalidCredentials
 	}
 
 	sessionID := uuid.New()
@@ -61,15 +61,20 @@ func (s *Service) Login(
 	)
 
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+
+	refreshToken, err := s.GenerateRefreshToken()
+	if err != nil {
+		return "", "", err
 	}
 
 	session := &session.Session{
-		ID:        sessionID,
-		UserId:    user.ID,
-		TokenHash: HashToken(token),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-		Revoked:   false,
+		ID:               sessionID,
+		UserId:           user.ID,
+		RefreshTokenHash: HashToken(refreshToken),
+		ExpiresAt:        time.Now().Add(24 * time.Hour),
+		Revoked:          false,
 	}
 
 	err = s.sessions.Create(
@@ -78,10 +83,10 @@ func (s *Service) Login(
 	)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return token, nil
+	return token, refreshToken, nil
 
 }
 
@@ -128,4 +133,44 @@ func (s *Service) LogoutAll(
 	userID uuid.UUID,
 ) error {
 	return s.sessions.RevokeAll(ctx, userID)
+}
+
+func (s *Service) Refresh(
+	ctx context.Context,
+	refreshToken string,
+) (string, error) {
+
+	hash := HashToken(refreshToken)
+
+	session, err := s.sessions.FindByRefreshTokenHash(
+		ctx,
+		hash,
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	if session == nil {
+		return "", ErrInvalidSession
+	}
+
+	if session.Revoked {
+		return "", ErrInvalidSession
+	}
+
+	if time.Now().After(session.ExpiresAt) {
+		return "", ErrInvalidSession
+	}
+
+	accessToken, err := s.GenerateAccessToken(
+		session.UserId,
+		session.ID,
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	return accessToken, nil
 }

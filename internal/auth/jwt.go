@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,6 +14,17 @@ type Claims struct {
 	SessionID uuid.UUID `json:"sid"`
 
 	jwt.RegisteredClaims
+}
+
+func (s *Service) GenerateRefreshToken() (string, error) {
+
+	b := make([]byte, 32)
+
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func (s *Service) GenerateAccessToken(

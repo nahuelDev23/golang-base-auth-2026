@@ -30,7 +30,7 @@ func (r *Repository) Create(
 		INSERT INTO sessions (
 			id,
 			user_id,
-			token_hash,
+			refresh_token_hash,
 			expires_at,
 			revoked
 		)
@@ -38,7 +38,7 @@ func (r *Repository) Create(
 		`,
 		session.ID,
 		session.UserId,
-		session.TokenHash,
+		session.RefreshTokenHash,
 		session.ExpiresAt,
 		session.Revoked,
 	)
@@ -59,7 +59,7 @@ func (r *Repository) FindByID(
 		SELECT
 			id,
 			user_id,
-			token_hash,
+			refresh_token_hash,
 			expires_at,
 			revoked,
 			created_at
@@ -70,7 +70,7 @@ func (r *Repository) FindByID(
 	).Scan(
 		&session.ID,
 		&session.UserId,
-		&session.TokenHash,
+		&session.RefreshTokenHash,
 		&session.ExpiresAt,
 		&session.Revoked,
 		&session.CreatedAt,
@@ -120,4 +120,46 @@ func (r *Repository) RevokeAll(
 	)
 
 	return err
+}
+
+func (r *Repository) FindByRefreshTokenHash(
+	ctx context.Context,
+	hash string,
+) (*Session, error) {
+
+	session := &Session{}
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		SELECT
+			id,
+			user_id,
+			refresh_token_hash,
+			expires_at,
+			revoked,
+			created_at
+		FROM sessions
+		WHERE refresh_token_hash = $1
+		`,
+		hash,
+	).Scan(
+		&session.ID,
+		&session.UserId,
+		&session.RefreshTokenHash,
+		&session.ExpiresAt,
+		&session.Revoked,
+		&session.CreatedAt,
+	)
+
+	if err != nil {
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return session, nil
 }

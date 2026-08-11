@@ -24,6 +24,10 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
 func (h *Handler) Login(c *gin.Context) {
 
 	var req LoginRequest
@@ -37,7 +41,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.service.Login(
+	token, refreshToken, err := h.service.Login(
 		c.Request.Context(),
 		req.Username,
 		req.Password,
@@ -63,7 +67,8 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"access_token": token,
+		"access_token":  token,
+		"refresh_token": refreshToken,
 	})
 }
 
@@ -137,4 +142,40 @@ func (h *Handler) LogoutAll(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) Refresh(c *gin.Context) {
+
+	var req RefreshRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	accessToken, err := h.service.Refresh(
+		c.Request.Context(),
+		req.RefreshToken,
+	)
+
+	if err != nil {
+
+		if errors.Is(err, ErrInvalidSession) {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid session",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "internal server error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": accessToken,
+	})
 }

@@ -81,5 +81,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 		authService.AuthMiddleware(),
 		authHandler.LogoutAll,
 	)
+
+	router.POST("/refresh", authHandler.Refresh)
 	return router
 }
