@@ -5,13 +5,20 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"test.nahueldev23.com/internal/auth"
 	"test.nahueldev23.com/internal/config"
+	"test.nahueldev23.com/internal/logging"
 	"test.nahueldev23.com/internal/session"
 	"test.nahueldev23.com/internal/user"
 )
 
-func New(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
+func New(db *pgxpool.Pool, cfg *config.Config, logger *logging.Logger) *gin.Engine {
 
 	router := gin.Default()
+
+	router.Use(
+		gin.Recovery(),
+		RequestIDMiddleware(),
+		LoggerMiddleware(logger),
+	)
 
 	userRepository := user.NewRepository(db)
 	userService := user.NewService(userRepository)
@@ -24,6 +31,7 @@ func New(db *pgxpool.Pool, cfg *config.Config) *gin.Engine {
 		sessionRepository,
 		cfg.JWTSecret, // esto lo ajustaremos en un momento
 		cfg.SessionDurationHours,
+		logger,
 	)
 
 	authHandler := auth.NewHandler(authService)

@@ -2,24 +2,34 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
 	"time"
 
 	"test.nahueldev23.com/internal/config"
 	"test.nahueldev23.com/internal/database"
+	"test.nahueldev23.com/internal/logging"
 	"test.nahueldev23.com/internal/server"
 	"test.nahueldev23.com/internal/session"
 )
 
 func main() {
+	logger := logging.New(
+		slog.New(
+			slog.NewJSONHandler(os.Stdout, nil),
+		),
+	)
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(context.Background(), "failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	db, err := database.New(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(context.Background(), "failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 
 	defer db.Close()
@@ -39,8 +49,15 @@ func main() {
 		)
 
 		if err != nil {
-			log.Printf("session cleanup failed: %v", err)
+			logger.Error(context.Background(), "session cleanup failed", "error", err)
+			return
 		}
+
+		logger.Info(
+			context.Background(),
+			"session cleanup completed",
+			"retention_days", cfg.SessionRetentionDays,
+		)
 	}
 
 	// Cleanup inicial
@@ -57,12 +74,13 @@ func main() {
 		}
 	}()
 
-	router := server.New(db, cfg)
+	router := server.New(db, cfg, logger)
 
-	log.Println("server running on port", cfg.Port)
+	logger.Info(context.Background(), "server starting", "port", cfg.Port)
 
 	err = router.Run(":" + cfg.Port)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(context.Background(), "server stopped", "error", err)
+		os.Exit(1)
 	}
 }

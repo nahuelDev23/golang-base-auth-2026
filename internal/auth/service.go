@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"test.nahueldev23.com/internal/logging"
 	"test.nahueldev23.com/internal/session"
 	"test.nahueldev23.com/internal/user"
 )
@@ -15,6 +16,7 @@ type Service struct {
 	sessions             *session.Repository
 	jwtSecret            []byte
 	sessionDurationHours int
+	logger               *logging.Logger
 }
 
 func NewService(
@@ -22,12 +24,14 @@ func NewService(
 	sessions *session.Repository,
 	jwtSecret string,
 	sessionDurationHours int,
+	logger *logging.Logger,
 ) *Service {
 	return &Service{
 		users:                users,
 		sessions:             sessions,
 		jwtSecret:            []byte(jwtSecret),
 		sessionDurationHours: sessionDurationHours,
+		logger:               logger,
 	}
 }
 
@@ -39,10 +43,12 @@ func (s *Service) Login(
 
 	user, err := s.users.FindByUsername(ctx, username)
 	if err != nil {
+		s.logger.Error(ctx, "failed to find user", "error", err)
 		return "", "", err
 	}
 
 	if user == nil {
+		s.logger.Warn(ctx, "login failed", "reason", "invalid credentials")
 		return "", "", ErrInvalidCredentials
 	}
 
@@ -52,6 +58,7 @@ func (s *Service) Login(
 	)
 
 	if err != nil {
+		s.logger.Warn(ctx, "login failed", "reason", "invalid credentials")
 		return "", "", ErrInvalidCredentials
 	}
 
