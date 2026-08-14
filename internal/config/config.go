@@ -17,10 +17,7 @@ type Config struct {
 
 func Load() (*Config, error) {
 
-	err := godotenv.Load()
-	if err != nil {
-		return nil, err
-	}
+	_ = godotenv.Load()
 
 	retention := os.Getenv("SESSION_RETENTION_DAYS")
 

@@ -14,13 +14,16 @@ import (
 func LoggerMiddleware(logger *logging.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
+		metrics.HTTPRequestsInFlight.Inc()
 
 		c.Next()
 
+		metrics.HTTPRequestsInFlight.Dec()
 		ctx := c.Request.Context()
 		status := c.Writer.Status()
 		method := c.Request.Method
 		path := c.FullPath()
+
 		duration := time.Since(start)
 
 		metrics.HTTPRequestsTotal.WithLabelValues(
@@ -28,6 +31,12 @@ func LoggerMiddleware(logger *logging.Logger) gin.HandlerFunc {
 			path,
 			strconv.Itoa(status),
 		).Inc()
+
+		metrics.HTTPRequestDuration.WithLabelValues(
+			method,
+			path,
+			strconv.Itoa(status),
+		).Observe(duration.Seconds())
 
 		args := []any{
 			"method", c.Request.Method,
