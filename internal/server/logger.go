@@ -1,12 +1,14 @@
 package server
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"test.nahueldev23.com/internal/auth"
 	"test.nahueldev23.com/internal/logging"
+	"test.nahueldev23.com/internal/metrics"
 )
 
 func LoggerMiddleware(logger *logging.Logger) gin.HandlerFunc {
@@ -16,8 +18,16 @@ func LoggerMiddleware(logger *logging.Logger) gin.HandlerFunc {
 		c.Next()
 
 		ctx := c.Request.Context()
-		duration := time.Since(start)
 		status := c.Writer.Status()
+		method := c.Request.Method
+		path := c.FullPath()
+		duration := time.Since(start)
+
+		metrics.HTTPRequestsTotal.WithLabelValues(
+			method,
+			path,
+			strconv.Itoa(status),
+		).Inc()
 
 		args := []any{
 			"method", c.Request.Method,

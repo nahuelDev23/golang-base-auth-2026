@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"test.nahueldev23.com/internal/auth"
 	"test.nahueldev23.com/internal/config"
 	"test.nahueldev23.com/internal/logging"
@@ -36,6 +37,7 @@ func New(db *pgxpool.Pool, cfg *config.Config, logger *logging.Logger) *gin.Engi
 
 	authHandler := auth.NewHandler(authService)
 
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.POST("/login", authHandler.Login)
 	router.GET(
 		"/users/:username",
