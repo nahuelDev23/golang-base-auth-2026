@@ -45,6 +45,8 @@ func (h *Handler) Login(c *gin.Context) {
 		c.Request.Context(),
 		req.Username,
 		req.Password,
+		c.ClientIP(),
+		c.GetHeader("User-Agent"),
 	)
 
 	if err != nil {

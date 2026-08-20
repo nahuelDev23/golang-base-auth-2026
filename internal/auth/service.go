@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"test.nahueldev23.com/internal/audit"
 	"test.nahueldev23.com/internal/logging"
 	"test.nahueldev23.com/internal/session"
 	"test.nahueldev23.com/internal/user"
@@ -17,6 +18,7 @@ type Service struct {
 	jwtSecret            []byte
 	sessionDurationHours int
 	logger               *logging.Logger
+	audit                *audit.Service
 }
 
 func NewService(
@@ -25,6 +27,7 @@ func NewService(
 	jwtSecret string,
 	sessionDurationHours int,
 	logger *logging.Logger,
+	auditService *audit.Service,
 ) *Service {
 	return &Service{
 		users:                users,
@@ -32,6 +35,7 @@ func NewService(
 		jwtSecret:            []byte(jwtSecret),
 		sessionDurationHours: sessionDurationHours,
 		logger:               logger,
+		audit:                auditService,
 	}
 }
 
@@ -39,6 +43,8 @@ func (s *Service) Login(
 	ctx context.Context,
 	username string,
 	password string,
+	ipAddress string,
+	userAgent string,
 ) (string, string, error) {
 
 	user, err := s.users.FindByUsername(ctx, username)
@@ -48,7 +54,26 @@ func (s *Service) Login(
 	}
 
 	if user == nil {
-		s.logger.Warn(ctx, "login failed", "reason", "invalid credentials")
+		s.logger.Warn(ctx, "login failed", "reason", "user not found")
+
+		err = s.audit.Log(
+			ctx,
+			nil,
+			nil,
+			"login_failed_user_not_found",
+			&ipAddress,
+			&userAgent,
+		)
+
+		if err != nil {
+			s.logger.Error(
+				ctx,
+				"failed to create audit log",
+				"event", "login_failed_user_not_found",
+				"error", err,
+			)
+		}
+
 		return "", "", ErrInvalidCredentials
 	}
 
@@ -58,7 +83,26 @@ func (s *Service) Login(
 	)
 
 	if err != nil {
-		s.logger.Warn(ctx, "login failed", "reason", "invalid credentials")
+		s.logger.Warn(ctx, "login failed", "reason", "invalid password")
+
+		err = s.audit.Log(
+			ctx,
+			&user.ID,
+			nil,
+			"login_failed_invalid_password",
+			&ipAddress,
+			&userAgent,
+		)
+
+		if err != nil {
+			s.logger.Error(
+				ctx,
+				"failed to create audit log",
+				"event", "login_failed_invalid_password",
+				"error", err,
+			)
+		}
+
 		return "", "", ErrInvalidCredentials
 	}
 
@@ -96,6 +140,23 @@ func (s *Service) Login(
 
 	if err != nil {
 		return "", "", err
+	}
+
+	err = s.audit.Log(
+		ctx,
+		&user.ID,
+		&sessionID,
+		"login_success",
+		&ipAddress,
+		&userAgent,
+	)
+
+	if err != nil {
+		s.logger.Error(
+			ctx,
+			"failed to create audit log",
+			"error", err,
+		)
 	}
 
 	return token, refreshToken, nil

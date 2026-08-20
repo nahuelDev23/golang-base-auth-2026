@@ -16,3 +16,5 @@ ON audit_logs(created_at);
 
 CREATE INDEX idx_audit_logs_event
 ON audit_logs(event);
+
+

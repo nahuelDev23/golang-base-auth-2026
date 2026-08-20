@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"test.nahueldev23.com/internal/audit"
 	"test.nahueldev23.com/internal/auth"
 	"test.nahueldev23.com/internal/config"
 	"test.nahueldev23.com/internal/logging"
@@ -11,7 +12,12 @@ import (
 	"test.nahueldev23.com/internal/user"
 )
 
-func New(db *pgxpool.Pool, cfg *config.Config, logger *logging.Logger) *gin.Engine {
+func New(
+	db *pgxpool.Pool,
+	cfg *config.Config,
+	logger *logging.Logger,
+	auditService *audit.Service,
+) *gin.Engine {
 
 	router := gin.Default()
 
@@ -33,6 +39,7 @@ func New(db *pgxpool.Pool, cfg *config.Config, logger *logging.Logger) *gin.Engi
 		cfg.JWTSecret, // esto lo ajustaremos en un momento
 		cfg.SessionDurationHours,
 		logger,
+		auditService,
 	)
 
 	authHandler := auth.NewHandler(authService)

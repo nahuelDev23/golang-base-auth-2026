@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"test.nahueldev23.com/internal/audit"
 	"test.nahueldev23.com/internal/config"
 	"test.nahueldev23.com/internal/database"
 	"test.nahueldev23.com/internal/logging"
@@ -35,6 +36,9 @@ func main() {
 	defer db.Close()
 
 	sessionRepository := session.NewRepository(db)
+
+	auditRepository := audit.NewRepository(db)
+	auditService := audit.NewService(auditRepository)
 
 	cleanup := func() {
 		cutoff := time.Now().AddDate(
@@ -74,7 +78,7 @@ func main() {
 		}
 	}()
 
-	router := server.New(db, cfg, logger)
+	router := server.New(db, cfg, logger, auditService)
 
 	logger.Info(context.Background(), "server starting", "port", cfg.Port)
 
